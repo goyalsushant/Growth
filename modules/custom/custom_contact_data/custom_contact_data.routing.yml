@@ -1,0 +1,31 @@
+custom_contact_data.custom_contact_data:
+  path: "/customform"
+  defaults:
+    _form: '\Drupal\custom_contact_data\Form\CustomForm'
+    _title: "My first custom data form"
+  requirements:
+    _permission: "view custom_contact_data"
+
+custom_contact_data.report:path:
+  path: "customformdisplay"
+  defaults:
+    _controller: '\Drupal\custom_contact_data\Controller\ReportController::report'
+    _title: "List of custom_contact_data"
+  requirements:
+    _permission: "view custom_contact_data"
+
+custom_contact_data.custom_contact_data_ajax:
+  path: "/customformajax"
+  defaults:
+    _form: '\Drupal\custom_contact_data\Form\CustomFormAjax'
+    _title: "ajax form for custom contact module "
+  requirements:
+    _permission: "view custom_contact_data"
+
+custom_contact_data.config:
+  path: "/admin/config/simple/config"
+  defaults:
+    _form: '\Drupal\custom_contact_data\Form\SimpleConfigForm'
+    _title: "Simple Configuration page "
+  requirements:
+    _permission: "administer site configuration"

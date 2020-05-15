@@ -1,0 +1,5 @@
+name: Batch Process Example
+description: Module to understand working of Batch Process in drupal.
+type: module
+core: 8.x
+package: Custom

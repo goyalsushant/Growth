@@ -1,0 +1,19 @@
+add goal custom entity entities:
+  title: 'Create new Goal custom entity entities'
+
+administer goal custom entity entities:
+  title: 'Administer Goal custom entity entities'
+  description: 'Allow to access the administration form to configure Goal custom entity entities.'
+  restrict access: true
+
+delete goal custom entity entities:
+  title: 'Delete Goal custom entity entities'
+
+edit goal custom entity entities:
+  title: 'Edit Goal custom entity entities'
+
+view published goal custom entity entities:
+  title: 'View published Goal custom entity entities'
+
+view unpublished goal custom entity entities:
+  title: 'View unpublished Goal custom entity entities'

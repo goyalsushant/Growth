@@ -1,0 +1,6 @@
+name: custom_contact_data
+description: My custom Form for contact data
+package: Custom
+type: module
+core: 8.x
+configure: custom_contact_data.admin_settings

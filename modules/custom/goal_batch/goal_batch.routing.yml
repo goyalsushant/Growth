@@ -1,0 +1,7 @@
+goal_batch.form:
+  path: '/batch-process'
+  defaults:
+    _title: Batch Process Example
+    _form: '\Drupal\goal_batch\Form\BatchProcessForm'
+  requirements:
+    _permission: 'access content'

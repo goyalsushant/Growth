@@ -1,0 +1,14 @@
+
+# Goal custom entity menu items definition
+entity.goal_custom_entity.collection:
+  title: 'Goal custom entity list'
+  route_name: entity.goal_custom_entity.collection
+  description: 'List Goal custom entity entities'
+  parent: system.admin_structure
+  weight: 100
+
+goal_custom_entity.admin.structure.settings:
+  title: 'Goal custom entity settings'
+  description: 'Configure Goal custom entity entities'
+  route_name: goal_custom_entity.settings
+  parent: system.admin_structure

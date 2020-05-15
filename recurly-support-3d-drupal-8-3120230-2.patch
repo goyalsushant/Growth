@@ -1,0 +1,195 @@
+diff --git a/modules/contrib/recurly/modules/recurlyjs/js/recurlyjs-element.js b/modules/contrib/recurly/modules/recurlyjs/js/recurlyjs-element.js
+index bb0d9e43..6a5a54f3 100644
+--- a/modules/contrib/recurly/modules/recurlyjs/js/recurlyjs-element.js
++++ b/modules/contrib/recurly/modules/recurlyjs/js/recurlyjs-element.js
+@@ -33,6 +33,47 @@
+     }
+   };
+ 
++  Drupal.behaviors.RecurlyJsFormBase = {
++    attach: function (context, settings) {
++      var geoField = drupalSettings.three_d_secure_action_token_id;
++      if (typeof (geoField) !== "undefined") {
++        const risk = recurly.Risk();
++        const threeDSecure = risk.ThreeDSecure({
++          actionTokenId: geoField
++        });
++
++        threeDSecure.on('error', error => {
++          Drupal.recurly.getRecurlyForm().submit();
++        });
++
++        threeDSecure.on('token', token => {
++          $('input[name=three_d_secure_action_result_token_id]').val(token.id);
++          Drupal.recurly.getRecurlyForm().submit();
++        });
++
++        threeDSecure.attach(document.querySelector('#three-d-secure-container'));
++        // Drupal.recurly.hideBillingFieldset();
++      }
++    }
++  };
++
++  Drupal.recurly.getSubscribeForm = function () {
++    return $('#recurlyjs-subscribe');
++  };
++
++  Drupal.recurly.getUpdateBillingForm = function () {
++    return $('#recurlyjs-update-billing');
++  };
++
++  Drupal.recurly.getRecurlyForm = function () {
++    if (Drupal.recurly.getSubscribeForm().length) {
++      return Drupal.recurly.getSubscribeForm();
++    }
++    else {
++      return Drupal.recurly.getUpdateBillingForm();
++    }
++  }
++
+   /**
+    * Handles submission of the subscribe form.
+    *
+@@ -162,6 +203,11 @@
+     }
+   };
+ 
++  // Drupal.recurly.hideBillingFieldset = function () {
++  //   $('.recurlyjs-billing-info').hide();
++  //   $('#edit-actions').hide();
++  // };
++
+   // VAT is only needed for EU countries.
+   (function () {
+     var country = $('#country');
+@@ -181,5 +227,4 @@
+       }
+     }).triggerHandler('init');
+   })();
+-
+-})(jQuery);
++})(jQuery, Drupal, drupalSettings);
+diff --git a/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsFormBase.php b/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsFormBase.php
+index 7c69223a..b02c0d7b 100644
+--- a/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsFormBase.php
++++ b/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsFormBase.php
+@@ -75,6 +75,18 @@ public function buildForm(array $form, FormStateInterface $form_state) {
+     $form['#attached']['library'][] = 'recurlyjs/recurlyjs.element';
+ 
+     $form['#attached']['drupalSettings']['recurlyjs']['recurly_public_key'] = $this->config('recurly.settings')->get('recurly_public_key') ?: '';
++    if ($form_state->get('action_token_id') !== NULL) {
++      $form['#attached']['drupalSettings']['three_d_secure_action_token_id'] = $form_state->get('action_token_id');
++
++      $form['three_d_secure_container'] = [
++        '#markup' => '<div id="three-d-secure-container" class="three-d-secure-auth-container"></div>',
++      ];
++
++      $form['three_d_secure_action_result_token_id'] = [
++        '#type' => 'hidden',
++        '#title' => t('3DSecure action token'),
++      ];
++    }
+     $form['#attached']['library'][] = 'recurlyjs/recurlyjs.configure';
+     // @FIXME: Include inline call to configure RecurlyJS.
+     // @see: https://github.com/CHROMATIC-LLC/recurly/blob/7.x-2.x/modules/recurlyjs/includes/recurlyjs.pages.inc#L510-L513
+diff --git a/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsSubscribeForm.php b/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsSubscribeForm.php
+index 2a9e58b4..fd068351 100644
+--- a/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsSubscribeForm.php
++++ b/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsSubscribeForm.php
+@@ -64,6 +64,15 @@ public function submitForm(array &$form, FormStateInterface $form_state) {
+     $currency = $form['#currency'];
+     $recurly_token = $form_state->getValue('recurly-token');
+     $coupon_code = $form_state->getValue('coupon_code');
++    if ($form['three_d_secure_action_result_token_id']['#value'] !== NULL) {
++      $three_d_secure_token = $form['three_d_secure_action_result_token_id']['#value'];
++      if ($three_d_secure_token === "") {
++        $form_state->set('action_token_id', NULL);
++        $this->messenger()->addError($this->t('We were unable to authenticate your payment method. Please choose a different payment method and try again.'));
++        $form_state->setRebuild(TRUE);
++        return;
++      }
++    }
+     $recurly_account = recurly_account_load(['entity_type' => $entity_type, 'entity_id' => $entity->id()]);
+     if (!$recurly_account) {
+       $recurly_account = new \Recurly_Account();
+@@ -97,13 +106,18 @@ public function submitForm(array &$form, FormStateInterface $form_state) {
+     // above alter hook to ensure it's not modified.
+     $subscription->account->billing_info = new \Recurly_BillingInfo();
+     $subscription->account->billing_info->token_id = $recurly_token;
+-
++    if (isset($three_d_secure_token)) {
++      $subscription->account->billing_info->three_d_secure_action_result_token_id = $three_d_secure_token;
++    }
+     try {
+       // This saves all of the data assembled above in addition to creating a
+       // new subscription record.
+       $subscription->create();
+     }
+     catch (\Recurly_ValidationError $e) {
++      if (isset($e->errors[0]->error_code) && $e->errors[0]->error_code === "three_d_secure_action_required") {
++        $form_state->set('action_token_id', $e->errors[0]->three_d_secure_action_token_id);
++      }
+       // There was an error validating information in the form. For example,
+       // credit card was declined. We don't need to log these in Drupal, you can
+       // find the errors logged within Recurly.
+diff --git a/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsUpdateBillingForm.php b/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsUpdateBillingForm.php
+index 0604c6a1..7a17081a 100644
+--- a/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsUpdateBillingForm.php
++++ b/modules/contrib/recurly/modules/recurlyjs/src/Form/RecurlyJsUpdateBillingForm.php
+@@ -71,7 +71,18 @@ public function buildForm(array $form, FormStateInterface $form_state, RouteMatc
+ 
+     $form['#entity_type'] = $entity_type;
+     $form['#entity'] = $entity;
++    if ($form_state->get('action_token_id') !== NULL) {
++      $form['#attached']['drupalSettings']['three_d_secure_action_token_id'] = $form_state->get('action_token_id');
+ 
++      $form['three_d_secure_container'] = [
++        '#markup' => '<div id="three-d-secure-container" class="three-d-secure-auth-container"></div>',
++      ];
++
++      $form['three_d_secure_action_result_token_id'] = [
++        '#type' => 'hidden',
++        '#title' => t('3DSecure action token'),
++      ];
++    }
+     $form = parent::buildForm($form, $form_state);
+     $excluded_fields = ['month', 'year'];
+     foreach (Element::children($form) as $form_element_name) {
+@@ -100,7 +111,14 @@ public function submitForm(array &$form, FormStateInterface $form_state) {
+     $entity_type = $form['#entity_type'];
+     $entity = $form['#entity'];
+     $recurly_token = $form_state->getValue('recurly-token');
+-
++    if ($form['three_d_secure_action_result_token_id']['#value'] !== NULL) {
++      $three_d_secure_token = $form['three_d_secure_action_result_token_id']['#value'];
++      if ($three_d_secure_token === "") {
++        $this->messenger()->addError($this->t('We were unable to authenticate your payment method. Please choose a different payment method and try again.'));
++        $form_state->setRebuild(TRUE);
++        return;
++      }
++    }
+     $entity_type = $entity->getEntityType()->getLowercaseLabel();
+     $recurly_account = recurly_account_load(['entity_type' => $entity_type, 'entity_id' => $entity->id()]);
+ 
+@@ -109,13 +127,21 @@ public function submitForm(array &$form, FormStateInterface $form_state) {
+         $billing_info = new \Recurly_BillingInfo();
+         $billing_info->account_code = $recurly_account->account_code;
+         $billing_info->token_id = $recurly_token;
++        if (isset($three_d_secure_token)) {
++          $billing_info->three_d_secure_action_result_token_id = $three_d_secure_token;
++        }
+         $billing_info->update();
+       }
+       catch (\Recurly_ValidationError $e) {
+         // There was an error validating information in the form. For example,
+         // credit card was declined. Let the user know. These errors are logged
+         // in Recurly.
++        // Requires 3DS authentication. Get the token id to pass into RJS.
++        if (isset($e->errors[0]->error_code) && $e->errors[0]->error_code === "three_d_secure_action_required") {
++          $form_state->set('action_token_id', $e->errors[0]->three_d_secure_action_token_id);
++        }
+         $this->messenger()->addError($this->t('<strong>Unable to update account:</strong><br/>@error', ['@error' => $e->getMessage()]));
++        $form_state->setRebuild(TRUE);
+       }
+       catch (\Recurly_NotFoundError $e) {
+         $this->messenger()->addError($this->t('Could not find account or token is invalid or expired.'));

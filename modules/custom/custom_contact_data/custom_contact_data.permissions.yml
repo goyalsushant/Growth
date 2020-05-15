@@ -1,0 +1,12 @@
+view custom_contact_data:
+  title: "View customcontat data Form"
+  description: "View and submit the ccd form."
+
+access custom_contact_data report:
+  title: "Access List of customcontactdata"
+  description: "View the report listing all data submitted."
+
+administer custom_contact_data:
+  title: "Administer ccd Settings"
+  description: "Access the ccdadministrative settings page."
+  restrict access: true

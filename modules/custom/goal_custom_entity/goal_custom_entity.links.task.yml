@@ -1,0 +1,22 @@
+# Goal custom entity routing definition
+goal_custom_entity.settings_tab:
+  route_name: goal_custom_entity.settings
+  title: 'Settings'
+  base_route: goal_custom_entity.settings
+
+entity.goal_custom_entity.canonical:
+  route_name: entity.goal_custom_entity.canonical
+  base_route: entity.goal_custom_entity.canonical
+  title: 'View'
+
+entity.goal_custom_entity.edit_form:
+  route_name: entity.goal_custom_entity.edit_form
+  base_route: entity.goal_custom_entity.canonical
+  title: 'Edit'
+
+entity.goal_custom_entity.delete_form:
+  route_name:  entity.goal_custom_entity.delete_form
+  base_route:  entity.goal_custom_entity.canonical
+  title: Delete
+  weight: 10
+

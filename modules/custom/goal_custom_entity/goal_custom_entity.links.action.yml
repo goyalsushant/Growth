@@ -1,0 +1,5 @@
+entity.goal_custom_entity.add_form:
+  route_name: entity.goal_custom_entity.add_form
+  title: 'Add Goal custom entity'
+  appears_on:
+    - entity.goal_custom_entity.collection
