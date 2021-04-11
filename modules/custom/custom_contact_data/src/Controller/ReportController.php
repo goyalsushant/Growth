@@ -3,6 +3,8 @@
 namespace Drupal\custom_contact_data\Controller;
 
 use Drupal\Core\Controller\ControllerBase;
+use Drupal\block_content\Entity\BlockContent;
+
 
 /**
  * Class Display.
@@ -18,6 +20,12 @@ class ReportController extends ControllerBase {
    *   Return TabDisplayle format data.
    */
   public function report() {
+    $block = BlockContent::load(1);
+
+    $block_view = \Drupal::entityTypeManager()->getViewBuilder('block_content')->view($block);
+    $block_view = $block_view['#block_content']->getTranslation('hi');
+    kint($block_view->info->getValue());
+    die;
     $result = \Drupal::database()->select('custom_contact_data', 'n')
       ->fields('n', ['id', 'name', 'mail', 'contact', 'city', 'address', 'gender'])
       ->execute()->fetchAllAssoc('id');
